@@ -1,0 +1,7 @@
+Resources:
+  IlMioBucketSemplice:
+    Type: 'AWS::S3::Bucket'
+    Properties:
+      BucketName: "mio-bucket-unico-2026"
+      VersioningConfiguration:
+        Status: Enabled
