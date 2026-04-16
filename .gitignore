@@ -1,0 +1,51 @@
+# --- Specifici della tua richiesta ---
+.env
+.venv/
+env/
+venv/
+*.code-workspace
+.vscode/tasks.json
+
+# --- AWS CDK ---
+# Cartella di output della sintesi (CloudFormation templates)
+cdk.out/
+.cdk.staging/
+# File di contesto (spesso contiene dati specifici dell'account/regione)
+cdk.context.json
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+.python-version
+
+# Distribuzione / Pacchetti
+bin/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Unit test / Coverage
+.tox/
+.nosetests
+.pytest_cache/
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+
+# --- OS Specific ---
+.DS_Store
+Thumbs.db

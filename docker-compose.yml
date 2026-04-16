@@ -1,0 +1,28 @@
+services:
+  backend:
+    build:
+      context: ../be 
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8000"
+    environment:
+      - NODE_ENV=development
+    networks:
+      - app-network
+
+  frontend:
+    build:
+      context: ../fe # Cartella dove hai il Dockerfile del FE
+      args:
+        # In locale il browser dell'utente deve chiamare localhost
+        - REACT_APP_API_URL=http://localhost:8080
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
