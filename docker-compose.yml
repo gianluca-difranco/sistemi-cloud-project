@@ -1,9 +1,9 @@
 services:
   backend:
     build:
-      context: ../be 
+      context: ../backend-fastapi
       dockerfile: Dockerfile
-    ports:
+    ports:  
       - "8080:8000"
     environment:
       - NODE_ENV=development

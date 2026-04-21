@@ -26,7 +26,7 @@ class MultiServiceStack(Stack):
         # 2. Database Aurora PostgreSQL (Rete Privata)
         db_cluster = rds.DatabaseCluster(
             self, "AuroraCluster",
-            engine=rds.DatabaseClusterEngine.aurora_postgresql(
+            engine=rds.DatabaseClusterEngine.aurora_postgres(
                 version=rds.AuroraPostgresEngineVersion.VER_15_4
             ),
             writer=rds.ClusterInstance.provisioned("writer",
