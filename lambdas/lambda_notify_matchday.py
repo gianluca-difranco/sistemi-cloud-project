@@ -16,6 +16,7 @@ def lambda_handler(event, context):
             results = body.get('results', [])
             emails = body.get('emails', [])
             
+            
             if not tenant_id or not matchday:
                 print("Messaggio SQS non valido, mancano tenant_id o matchday")
                 continue
