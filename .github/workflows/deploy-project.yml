@@ -1,4 +1,4 @@
-name: Deploy Lambdas
+name: Deploy Project
 
 on:
   push:
@@ -9,8 +9,9 @@ on:
 
 jobs:
   deploy:
-    name: CDK Deploy (Lambdas)
+    name: CDK Deploy (Project)
     runs-on: ubuntu-latest
+    environment: "aws-deploy"
     steps:
     - name: Checkout repository
       uses: actions/checkout@v3
