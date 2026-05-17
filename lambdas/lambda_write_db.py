@@ -33,7 +33,15 @@ def lambda_handler(event, context):
 
         # 2. Processo messaggi da SQS
         for record in event['Records']:
-            message_content = record['body']
+            message_body = record['body']
+            try:
+                data = json.loads(message_body)
+                if isinstance(data, dict) and 'content' in data:
+                    message_content = data['content']
+                else:
+                    message_content = message_body
+            except json.JSONDecodeError:
+                message_content = message_body
             
             insert_query = "INSERT INTO message (content) VALUES (:content)"
             # Con Data API i parametri si passano così (più sicuro contro SQL Injection)
