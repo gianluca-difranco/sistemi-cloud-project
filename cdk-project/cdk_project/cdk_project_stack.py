@@ -57,8 +57,8 @@ class EcsMultiContainerStack(Stack):
         # ─────────────────────────────────────────────
         task_definition = ecs.FargateTaskDefinition(
             self, "MyTaskDef",
-            memory_limit_mib=1024,
-            cpu=512,
+            memory_limit_mib=2048,
+            cpu=1024,
         )
 
         # ─────────────────────────────────────────────

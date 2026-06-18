@@ -4,8 +4,9 @@
 env/
 venv/
 *.code-workspace
-.vscode/tasks.json
-
+.vscode/
+node_modules/
+.vscode/
 # --- AWS CDK ---
 # Cartella di output della sintesi (CloudFormation templates)
 cdk.out/

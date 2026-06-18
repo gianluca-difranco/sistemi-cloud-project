@@ -4,8 +4,11 @@ on:
   push:
     branches: [ "production" ]
     paths:
+      - '.github/workflows/**'
       - 'lambdas/**'
       - 'cdk-project/**'
+      - 'multi_service_stack.py'
+      - 'requirements.txt'
 
 jobs:
   deploy:
