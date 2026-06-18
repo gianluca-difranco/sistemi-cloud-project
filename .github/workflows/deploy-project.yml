@@ -45,8 +45,8 @@ jobs:
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         aws-region: ${{ secrets.AWS_REGION }}
 
-    - name: Deploy CDK Stack (Hotswap)
+    - name: Deploy CDK Stack (Hotswap-fallback)
       working-directory: ./cdk-project
-      run: cdk deploy --all --require-approval never --hotswap
+      run: cdk deploy --all --require-approval never --hotswap-fallback
       # L'opzione --hotswap è ideale per deployare rapidamente solo il codice Lambda
       # saltando gli aggiornamenti di CloudFormation se l'infrastruttura non è cambiata.
