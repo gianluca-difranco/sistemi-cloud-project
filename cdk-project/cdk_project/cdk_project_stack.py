@@ -297,6 +297,9 @@ class EcsMultiContainerStack(Stack):
             internet_facing=True,
         )
 
+        # Inserisci la URL del frontend nel backend
+        backend_container.add_environment("FRONTEND_URL", f"http://{alb.load_balancer_dns_name}")
+
         listener = alb.add_listener("PublicListener", port=80)
         listener.add_targets(
             "FargateTarget",
