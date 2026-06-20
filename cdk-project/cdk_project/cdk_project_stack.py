@@ -81,6 +81,17 @@ class EcsMultiContainerStack(Stack):
         )
 
         # ─────────────────────────────────────────────
+        # 4b. Bastion Host (per accesso remoto sicuro al DB tramite SSM)
+        # ─────────────────────────────────────────────
+        bastion = ec2.BastionHostLinux(
+            self, "DbBastion",
+            vpc=vpc,
+            instance_type=ec2.InstanceType.of(ec2.InstanceClass.BURSTABLE3, ec2.InstanceSize.NANO),
+            subnet_selection=ec2.SubnetSelection(subnet_type=ec2.SubnetType.PRIVATE_WITH_EGRESS)
+        )
+        db_cluster.connections.allow_default_port_from(bastion)
+
+        # ─────────────────────────────────────────────
         # 5. SQS Queue (messaggi TA → Lambda)
         #    Dead-letter queue: messaggi falliti dopo 3 tentativi
         # ─────────────────────────────────────────────
@@ -365,3 +376,7 @@ class EcsMultiContainerStack(Stack):
         CfnOutput(self, "BoardUrl",
                   value=f"http://{alb.load_balancer_dns_name}:8080",
                   description="URL pubblico della bacheca (Board)")
+
+        CfnOutput(self, "BastionInstanceId",
+                  value=bastion.instance_id,
+                  description="ID dell'istanza del Bastion Host")
