@@ -16,7 +16,7 @@ from aws_cdk import (
 from constructs import Construct
 import os
 
-# Legge variabili dal file .env per non pusharle su git
+
 env_vars = {}
 for p in ['../.env', '../../.env']:
     env_path = os.path.join(os.path.dirname(__file__), p)
@@ -45,18 +45,18 @@ class EcsMultiContainerStack(Stack):
         # ─────────────────────────────────────────────
         # 1. VPC
         # ─────────────────────────────────────────────
-        vpc = ec2.Vpc(self, "MyVpc", max_azs=2)
+        vpc = ec2.Vpc(self, "project-vpc", max_azs=2)
 
         # ─────────────────────────────────────────────
         # 2. ECS Cluster
         # ─────────────────────────────────────────────
-        cluster = ecs.Cluster(self, "MyCluster", vpc=vpc)
+        cluster = ecs.Cluster(self, "project-cluster", vpc=vpc)
 
         # ─────────────────────────────────────────────
         # 3. Task Definition (Fargate)
         # ─────────────────────────────────────────────
         task_definition = ecs.FargateTaskDefinition(
-            self, "MyTaskDef",
+            self, "project-task-def",
             memory_limit_mib=2048,
             cpu=1024,
         )
@@ -68,7 +68,7 @@ class EcsMultiContainerStack(Stack):
         #    tramite RDS Data API senza essere nella stessa VPC.
         # ─────────────────────────────────────────────
         db_cluster = rds.DatabaseCluster(
-            self, "MyAuroraCluster",
+            self, "project-aurora-cluster",
             engine=rds.DatabaseClusterEngine.aurora_postgres(
                 version=rds.AuroraPostgresEngineVersion.of('15.17', '15')
             ),
@@ -76,7 +76,6 @@ class EcsMultiContainerStack(Stack):
             writer=rds.ClusterInstance.serverless_v2("writer"),
             default_database_name=DATABASE_NAME,
             vpc_subnets=ec2.SubnetSelection(subnet_type=ec2.SubnetType.PRIVATE_WITH_EGRESS),
-            # Abilita la RDS Data API (usata dalla Lambda tramite boto3 rds-data client)
             enable_data_api=True,
         )
 
@@ -84,7 +83,7 @@ class EcsMultiContainerStack(Stack):
         # 4b. Bastion Host (per accesso remoto sicuro al DB tramite SSM)
         # ─────────────────────────────────────────────
         bastion = ec2.BastionHostLinux(
-            self, "DbBastion",
+            self, "project-bastion",
             vpc=vpc,
             instance_type=ec2.InstanceType.of(ec2.InstanceClass.BURSTABLE3, ec2.InstanceSize.NANO),
             subnet_selection=ec2.SubnetSelection(subnet_type=ec2.SubnetType.PRIVATE_WITH_EGRESS)
@@ -92,18 +91,18 @@ class EcsMultiContainerStack(Stack):
         db_cluster.connections.allow_default_port_from(bastion)
 
         # ─────────────────────────────────────────────
-        # 5. SQS Queue (messaggi TA → Lambda)
+        # 5. SQS Queue 
         #    Dead-letter queue: messaggi falliti dopo 3 tentativi
+        #    Messages queue: messaggi inviati dal TA verso la Lambda
         # ─────────────────────────────────────────────
         dlq = sqs.Queue(
-            self, "MessagesDeadLetterQueue",
+            self, "project-messages-dlq",
             queue_name="fantacloud-messages-dlq",
         )
 
         messages_queue = sqs.Queue(
-            self, "MessagesQueue",
+            self, "project-messages-queue",
             queue_name="fantacloud-messages",
-            # visibility_timeout deve essere >= timeout Lambda
             visibility_timeout=Duration.seconds(300),
             dead_letter_queue=sqs.DeadLetterQueue(
                 max_receive_count=3,
@@ -116,7 +115,7 @@ class EcsMultiContainerStack(Stack):
         #    Il codice è preso dalla cartella lambdas/ nella root del repo
         # ─────────────────────────────────────────────
         lambda_write_db = _lambda.Function(
-            self, "LambdaWriteDb",
+            self, "project-lambda-write-db",
             runtime=_lambda.Runtime.PYTHON_3_11,
             handler="lambda_write_db.lambda_handler",
             code=_lambda.Code.from_asset("../lambdas"),
@@ -143,21 +142,21 @@ class EcsMultiContainerStack(Stack):
         )
 
         # ─────────────────────────────────────────────
-        # NOTIFICHE FINE GIORNATA: SNS, SQS e Lambda
+        #  7. NOTIFICHE FINE GIORNATA: SNS, SQS e Lambda
         # ─────────────────────────────────────────────
         # Topic SNS Globale per le notifiche
         match_notifications_topic = sns.Topic(
-            self, "MatchNotificationsTopic",
+            self, "project-match-notifications-topic",
             topic_name="fantacloud-match-notifications"
         )
 
         matchday_dlq = sqs.Queue(
-            self, "MatchdayDeadLetterQueue",
+            self, "project-matchday-dlq",
             queue_name="fantacloud-matchday-dlq",
         )
         # Coda SQS per disaccoppiare il calcolo dalla notifica
         matchday_calculated_queue = sqs.Queue(
-            self, "MatchdayCalculatedQueue",
+            self, "project-matchday-calculated-queue",
             queue_name="fantacloud-matchday-calculated",
             visibility_timeout=Duration.seconds(120),
             dead_letter_queue=sqs.DeadLetterQueue(
@@ -168,7 +167,7 @@ class EcsMultiContainerStack(Stack):
 
         # Lambda per processare il calcolo e inviare a SNS
         lambda_notify_matchday = _lambda.Function(
-            self, "LambdaNotifyMatchday",
+            self, "project-lambda-notify-matchday",
             runtime=_lambda.Runtime.PYTHON_3_11,
             handler="lambda_notify_matchday.lambda_handler",
             code=_lambda.Code.from_asset("../lambdas"),
@@ -195,11 +194,11 @@ class EcsMultiContainerStack(Stack):
         )
 
         # ─────────────────────────────────────────────
-        # 7. ECR repositories
+        # 8. ECR repositories
         # ─────────────────────────────────────────────
-        be_repo = ecr.Repository.from_repository_name(self, "BeRepo", "project/backend")
-        fe_repo = ecr.Repository.from_repository_name(self, "FeRepo", "project/frontend")
-        board_repo = ecr.Repository.from_repository_name(self, "BoardRepo", "project/board")
+        be_repo = ecr.Repository.from_repository_name(self, "project-be-repo", "project/backend")
+        fe_repo = ecr.Repository.from_repository_name(self, "project-fe-repo", "project/frontend")
+        board_repo = ecr.Repository.from_repository_name(self, "project-board-repo", "project/board")
 
         backend_env = {
             "PORT":          "8000",
@@ -220,11 +219,11 @@ class EcsMultiContainerStack(Stack):
                 backend_env[key] = env_vars[key]
 
         # ─────────────────────────────────────────────
-        # 8. Container Backend
+        # 9. Container Backend
         #    Riceve credenziali dal Secret di Aurora e altre config
         # ─────────────────────────────────────────────
         backend_container = task_definition.add_container(
-            "BackendContainer",
+            "project-backend-container",
             image=ecs.ContainerImage.from_ecr_repository(be_repo),
             logging=ecs.LogDrivers.aws_logs(stream_prefix="Backend"),
             environment=backend_env,
@@ -253,10 +252,10 @@ class EcsMultiContainerStack(Stack):
         )
 
         # ─────────────────────────────────────────────
-        # 9. Container Frontend
+        # 10. Container Frontend
         # ─────────────────────────────────────────────
         frontend_container = task_definition.add_container(
-            "FrontendContainer",
+            "project-frontend-container",
             image=ecs.ContainerImage.from_ecr_repository(fe_repo),
             logging=ecs.LogDrivers.aws_logs(stream_prefix="Frontend"),
             environment={"BACKEND_URL": BACKEND_URL},
@@ -264,10 +263,10 @@ class EcsMultiContainerStack(Stack):
         frontend_container.add_port_mappings(ecs.PortMapping(container_port=80))
 
         # ─────────────────────────────────────────────
-        # 9b. Container Board
+        # 10b. Container Board
         # ─────────────────────────────────────────────
         board_container = task_definition.add_container(
-            "BoardContainer",
+            "project-board-container",
             image=ecs.ContainerImage.from_ecr_repository(board_repo),
             logging=ecs.LogDrivers.aws_logs(stream_prefix="Board"),
             environment={
@@ -283,7 +282,7 @@ class EcsMultiContainerStack(Stack):
         board_container.add_port_mappings(ecs.PortMapping(container_port=8080))
 
         # ─────────────────────────────────────────────
-        # 10. Security Group + Fargate Service
+        # 11. Security Group + Fargate Service
         # ─────────────────────────────────────────────
         service_sg = ec2.SecurityGroup(self, "ServiceSG", vpc=vpc, allow_all_outbound=True)
 
@@ -300,10 +299,10 @@ class EcsMultiContainerStack(Stack):
         )
 
         # ─────────────────────────────────────────────
-        # 11. Application Load Balancer
+        # 12. Application Load Balancer
         # ─────────────────────────────────────────────
         alb = elbv2.ApplicationLoadBalancer(
-            self, "MyALB",
+            self, "project-alb",
             vpc=vpc,
             internet_facing=True,
         )
@@ -313,10 +312,10 @@ class EcsMultiContainerStack(Stack):
 
         listener = alb.add_listener("PublicListener", port=80)
         listener.add_targets(
-            "FargateTarget",
+            "project-fargate-target",
             port=80,
             targets=[fargate_service.load_balancer_target(
-                container_name="FrontendContainer",
+                container_name="project-frontend-container",
                 container_port=80,
             )],
             health_check=elbv2.HealthCheck(
@@ -325,12 +324,12 @@ class EcsMultiContainerStack(Stack):
             ),
         )
 
-        board_listener = alb.add_listener("BoardListener", port=8080)
+        board_listener = alb.add_listener("project-board-listener", port=8080)
         board_listener.add_targets(
-            "BoardTarget",
+            "project-board-target",
             port=8080,
             targets=[fargate_service.load_balancer_target(
-                container_name="BoardContainer",
+                container_name="project-board-container",
                 container_port=8080,
             )],
             health_check=elbv2.HealthCheck(
@@ -340,43 +339,47 @@ class EcsMultiContainerStack(Stack):
         )
 
         # ─────────────────────────────────────────────
-        # 12. Sicurezza
+        # 13. Sicurezza
         # ─────────────────────────────────────────────
         service_sg.connections.allow_from(alb, ec2.Port.tcp(80))
         service_sg.connections.allow_from(alb, ec2.Port.tcp(8080))
         db_cluster.connections.allow_default_port_from(service_sg)
 
         # ─────────────────────────────────────────────
-        # 13. CfnOutput — valori utili post-deploy
+        # 14. CfnOutput — valori utili post-deploy
         # ─────────────────────────────────────────────
-        CfnOutput(self, "ALBUrl",
-                  value=alb.load_balancer_dns_name,
+        CfnOutput(self, "project-alb-url",
+                  value=f"http://{alb.load_balancer_dns_name}",
                   description="URL pubblico del Load Balancer")
 
-        CfnOutput(self, "SqsQueueUrl",
+        CfnOutput(self, "project-sqs-queue-url",
                   value=messages_queue.queue_url,
                   description="URL coda SQS (SQS_QUEUE_URL del backend)")
 
-        CfnOutput(self, "SqsQueueArn",
+        CfnOutput(self, "project-sqs-queue-arn",
                   value=messages_queue.queue_arn,
                   description="ARN della coda SQS")
 
-        CfnOutput(self, "EcsClusterName",
+        CfnOutput(self, "project-ecs-cluster-name",
                   value=cluster.cluster_name,
                   description="Nome del cluster ECS")
                   
-        CfnOutput(self, "EcsServiceName",
+        CfnOutput(self, "project-ecs-service-name",
                   value=fargate_service.service_name,
                   description="Nome del servizio ECS")
 
-        CfnOutput(self, "LambdaName",
+        CfnOutput(self, "project-lambda-name",
                   value=lambda_write_db.function_name,
                   description="Nome della Lambda SQS→Aurora")
 
-        CfnOutput(self, "BoardUrl",
+        CfnOutput(self, "project-board-url",
                   value=f"http://{alb.load_balancer_dns_name}:8080",
                   description="URL pubblico della bacheca (Board)")
 
-        CfnOutput(self, "BastionInstanceId",
+        CfnOutput(self, "project-bastion-instance-id",
                   value=bastion.instance_id,
                   description="ID dell'istanza del Bastion Host")
+
+        CfnOutput(self, "project-db-cluster-endpoint",
+                  value=db_cluster.cluster_endpoint.hostname,
+                  description="Endpoint di scrittura del database Aurora")

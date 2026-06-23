@@ -48,5 +48,4 @@ jobs:
     - name: Deploy CDK Stack (Hotswap-fallback)
       working-directory: ./cdk-project
       run: cdk deploy --all --require-approval never --hotswap-fallback
-      # L'opzione --hotswap è ideale per deployare rapidamente solo il codice Lambda
-      # saltando gli aggiornamenti di CloudFormation se l'infrastruttura non è cambiata.
+      # --hotswap per deployare rapidamente solo il codice Lambda e per saltare gli aggiornamenti di CloudFormation se l'infrastruttura non è cambiata.
